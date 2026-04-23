@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HNIDRS</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f1117; --surface:#1a1d27; --border:#2a2d3a;
+  --text:#e2e8f0; --muted:#64748b;
+  --accent:#3b82f6; --red:#ef4444; --orange:#f97316;
+  --yellow:#eab308; --green:#22c55e;
+  --font:'Courier New',monospace;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:13px;min-height:100vh;display:flex;flex-direction:column}
+
+/* ── Top bar ── */
+#topbar{
+  background:var(--surface);border-bottom:1px solid var(--border);
+  padding:8px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0;
+}
+.logo{font-size:16px;font-weight:bold;color:var(--accent);letter-spacing:3px}
+#status-pill{display:flex;align-items:center;gap:6px;padding:4px 14px;
+  border-radius:20px;border:1px solid var(--border);font-size:11px;font-weight:bold}
+#led{width:9px;height:9px;border-radius:50%;background:var(--red);flex-shrink:0;transition:background .4s}
+#led.on{background:var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.6)}70%{box-shadow:0 0 0 7px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 transparent}}
+#iface-badge{background:var(--border);border-radius:4px;padding:3px 10px;font-size:11px;color:var(--muted)}
+#counters{margin-left:auto;font-size:11px;color:var(--muted);display:flex;gap:16px}
+#counters b{color:var(--text)}
+
+/* ── Stat strip ── */
+#stats{display:grid;grid-template-columns:repeat(5,1fr);gap:0;border-bottom:1px solid var(--border);flex-shrink:0}
+.sc{padding:10px 0;text-align:center;border-right:1px solid var(--border)}
+.sc:last-child{border-right:none}
+.sc .v{font-size:24px;font-weight:bold;line-height:1.1}
+.sc .l{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+
+/* ── Tab bar ── */
+#tabbar{display:flex;background:var(--surface);border-bottom:2px solid var(--border);flex-shrink:0}
+.tab{padding:11px 22px;cursor:pointer;font-size:12px;font-weight:bold;
+     color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px;
+     transition:all .15s;display:flex;align-items:center;gap:7px;white-space:nowrap}
+.tab:hover{color:var(--text);background:rgba(255,255,255,.03)}
+.tab.active{color:var(--text);border-bottom-color:var(--accent)}
+.tab .cnt{background:var(--red);color:#fff;border-radius:10px;
+          padding:0 6px;font-size:10px;display:none}
+.tab .cnt.show{display:inline}
+
+/* ── Tab panes ── */
+#content{flex:1;overflow:hidden;display:flex;flex-direction:column}
+.pane{display:none;flex:1;overflow:hidden;flex-direction:column;padding:14px;gap:10px}
+.pane.active{display:flex}
+
+/* ── Two column ── */
+.col2{display:grid;grid-template-columns:1fr 1fr;gap:10px;flex:1;min-height:0}
+.col3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+
+/* ── Panel ── */
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:6px;
+       display:flex;flex-direction:column;overflow:hidden;min-height:0}
+.ph{display:flex;align-items:center;gap:7px;padding:8px 12px;
+    border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap}
+.ph h3{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);flex:1}
+.pb{flex:1;overflow-y:auto;min-height:0}
+.pb::-webkit-scrollbar{width:3px}
+.pb::-webkit-scrollbar-thumb{background:var(--border)}
+
+/* ── Tables ── */
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.4px;
+   color:var(--muted);padding:5px 10px;border-bottom:1px solid var(--border);
+   position:sticky;top:0;background:var(--surface);z-index:1}
+td{padding:5px 10px;border-bottom:1px solid rgba(42,45,58,.4);font-size:11px;word-break:break-all}
+tr:hover td{background:rgba(255,255,255,.025)}
+
+/* ── Badges ── */
+.badge{display:inline-block;padding:1px 6px;border-radius:3px;
+       font-size:10px;font-weight:bold;text-transform:uppercase}
+.s-info,.s-low{background:#1e3a5f;color:#60a5fa}
+.s-medium{background:#3d2c00;color:#fbbf24}
+.s-high{background:#3d0000;color:#f87171}
+.s-critical{background:#2d003d;color:#c084fc}
+.p-tcp{background:#1a2744;color:#60a5fa}
+.p-udp{background:#1a3328;color:#34d399}
+.p-icmp{background:#2d1f00;color:#fbbf24}
+.p-arp{background:#2d0d2d;color:#c084fc}
+.p-other{background:#1f1f1f;color:#94a3b8}
+
+/* ── Inputs ── */
+input,select{background:var(--bg);border:1px solid var(--border);color:var(--text);
+  padding:5px 8px;border-radius:4px;font-family:var(--font);font-size:12px}
+input:focus,select:focus{outline:none;border-color:var(--accent)}
+.irow{display:flex;gap:5px;padding:7px 10px;border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap}
+.irow input,.irow select{flex:1;min-width:0}
+
+/* ── Buttons ── */
+.btn{padding:5px 13px;border-radius:4px;border:none;cursor:pointer;
+     font-family:var(--font);font-size:12px;font-weight:bold;transition:opacity .15s}
+.btn:hover{opacity:.82}
+.btn-green{background:var(--green);color:#000}
+.btn-red{background:var(--red);color:#fff}
+.btn-blue{background:var(--accent);color:#fff}
+.btn-ghost{background:var(--border);color:var(--text)}
+.btn-orange{background:var(--orange);color:#000}
+.sm{padding:2px 8px;font-size:10px}
+
+/* ── Offensive cards ── */
+.off-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:4px 0}
+.oc{background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:12px}
+.oc h4{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--orange);margin-bottom:10px}
+.oc .r{display:flex;gap:5px;margin-bottom:6px;flex-wrap:wrap}
+.oc .r input,.oc .r select{flex:1;min-width:0;font-size:11px;padding:4px 7px}
+pre.out{background:#080b11;border:1px solid var(--border);border-radius:3px;
+        padding:7px;font-size:10px;color:var(--muted);max-height:200px;
+        overflow-y:auto;white-space:pre-wrap;margin-top:7px}
+
+/* ── IP detail overlay ── */
+#ip-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:80;align-items:center;justify-content:center}
+#ip-overlay.open{display:flex}
+#ip-box{background:var(--surface);border:1px solid var(--border);border-radius:8px;
+        width:90%;max-width:860px;max-height:80vh;display:flex;flex-direction:column;overflow:hidden}
+#ip-box .ph{background:var(--bg)}
+
+/* ── Toast ── */
+#toast{position:fixed;bottom:16px;right:16px;background:var(--surface);
+       border:1px solid var(--border);padding:8px 14px;border-radius:5px;
+       display:none;z-index:200;font-size:12px;max-width:320px}
+
+/* ── Flash ── */
+@keyframes flash{from{background:rgba(59,130,246,.18)}to{background:transparent}}
+tr.new td{animation:flash .8s ease-out}
+</style>
+</head>
+<body>
+
+<!-- ══ TOP BAR ══════════════════════════════════════════════════════════════ -->
+<div id="topbar">
+  <span class="logo">HNIDRS</span>
+
+  <div id="status-pill">
+    <div id="led"></div>
+    <span id="status-txt" style="color:var(--muted)">CONNECTING…</span>
+  </div>
+
+  <!-- Active capture interface — read only, set via CLI --interface -->
+  <div id="iface-badge">📡 {{ capture_iface }}</div>
+
+  <div id="counters">
+    <span>Captured <b id="c-cap">0</b></span>
+    <span>Processed <b id="c-proc">0</b></span>
+    <span>Queue <b id="c-q">0</b></span>
+  </div>
+</div>
+
+<!-- ══ STAT STRIP ════════════════════════════════════════════════════════════ -->
+<div id="stats">
+  <div class="sc"><div class="v" id="s-al" style="color:var(--red)">0</div><div class="l">Alerts</div></div>
+  <div class="sc"><div class="v" id="s-pk" style="color:var(--accent)">0</div><div class="l">Packets</div></div>
+  <div class="sc"><div class="v" id="s-dv" style="color:var(--green)">{{ devices|length }}</div><div class="l">Devices</div></div>
+  <div class="sc"><div class="v" id="s-wl" style="color:var(--green)">{{ whitelist|length }}</div><div class="l">Whitelisted</div></div>
+  <div class="sc"><div class="v" id="s-bl" style="color:var(--orange)">{{ blacklist|length }}</div><div class="l">Blacklisted</div></div>
+</div>
+
+<!-- ══ TAB BAR ═══════════════════════════════════════════════════════════════ -->
+<div id="tabbar">
+  <div class="tab active" onclick="switchTab('alerts')">
+    🚨 Alerts <span class="cnt" id="al-cnt">0</span>
+  </div>
+  <div class="tab" onclick="switchTab('packets')">
+    📡 Packets
+  </div>
+  <div class="tab" onclick="switchTab('offensive')">
+    ⚔️ Offensive
+  </div>
+  <div class="tab" onclick="switchTab('network')">
+    🌐 Network
+  </div>
+  <div class="tab" onclick="switchTab('lists')">
+    ✅ Lists
+  </div>
+</div>
+
+<!-- ══ CONTENT ════════════════════════════════════════════════════════════════ -->
+<div id="content">
+
+  <!-- ── ALERTS TAB ── -->
+  <div class="pane active" id="pane-alerts">
+    <div class="panel" style="flex:1">
+      <div class="ph">
+        <h3>Live Alert Feed</h3>
+        <button class="btn btn-ghost sm" onclick="clearAlerts()">Clear</button>
+      </div>
+      <div class="pb">
+        <table>
+          <thead><tr>
+            <th>Time</th><th>Type</th><th>Severity</th><th>Source IP</th><th>Dst IP</th><th>Port</th><th>Protocol</th><th>Detail</th>
+          </tr></thead>
+          <tbody id="alert-tbody">
+            <tr id="alert-ph"><td colspan="8" style="color:var(--muted);text-align:center;padding:30px">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PACKETS TAB ── -->
+  <div class="pane" id="pane-packets">
+    <div class="panel" style="flex:1">
+      <div class="ph">
+        <h3>Live Packet Stream</h3>
+        <label style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px;cursor:pointer">
+          <input type="checkbox" id="http-chk" onchange="httpOnly=this.checked"> HTTP only
+        </label>
+        <button class="btn btn-ghost sm" id="pause-btn" onclick="togglePause()">⏸ Pause</button>
+        <button class="btn btn-ghost sm" onclick="clearPackets()">Clear</button>
+      </div>
+      <div class="pb">
+        <table>
+          <thead><tr>
+            <th>Time</th><th>Proto</th><th>Src IP</th><th>Src Port</th><th>Dst IP</th><th>Dst Port</th><th>Flags</th><th>Len</th><th>Payload</th>
+          </tr></thead>
+          <tbody id="pkt-tbody">
+            <tr id="pkt-ph"><td colspan="9" style="color:var(--muted);text-align:center;padding:16px">Connecting…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── OFFENSIVE TAB ── -->
+  <div class="pane" id="pane-offensive" style="overflow-y:auto">
+    <div class="off-grid">
+
+      <div class="oc">
+        <h4>🗺 Nmap Recon</h4>
+        <div class="r">
+          <input id="recon-ip" placeholder="Target IP">
+          <button class="btn btn-blue sm" onclick="runRecon()">Scan</button>
+        </div>
+        <pre class="out" id="recon-out">Nmap results appear here (takes ~60s)…</pre>
+      </div>
+
+      <div class="oc">
+        <h4>🔀 ARP Spoof Engine</h4>
+        <div class="r">
+          <input id="arp-tgt" placeholder="Target IP">
+          <input id="arp-gw"  placeholder="Gateway IP">
+        </div>
+        <div class="r">
+          <select id="arp-iface">{% for i in interfaces %}<option {% if i==capture_iface %}selected{% endif %}>{{ i }}</option>{% endfor %}</select>
+          <select id="arp-mode">
+            <option value="two_way">Two-way MITM</option>
+            <option value="one_way_block">One-way block</option>
+          </select>
+        </div>
+        <div class="r">
+          <button class="btn btn-red sm" onclick="startARP()">▶ Start</button>
+          <button class="btn btn-ghost sm" onclick="stopARP()">■ Stop</button>
+        </div>
+      </div>
+
+      <div class="oc">
+        <h4>🌐 DNS Spoofing</h4>
+        <div class="r">
+          <input id="dns-tgt"  placeholder="Target IP (blank = all)">
+          <input id="dns-dom"  placeholder="Domain to spoof">
+        </div>
+        <div class="r">
+          <input id="dns-ip"   placeholder="Redirect to IP">
+          <select id="dns-iface">{% for i in interfaces %}<option {% if i==capture_iface %}selected{% endif %}>{{ i }}</option>{% endfor %}</select>
+        </div>
+        <div class="r">
+          <button class="btn btn-red sm" onclick="startDNS()">▶ Start</button>
+          <button class="btn btn-ghost sm" onclick="stopDNS()">■ Stop</button>
+        </div>
+      </div>
+
+      <div class="oc">
+        <h4>🔓 SSL Stripping</h4>
+        <div class="r">
+          <select id="ssl-iface">{% for i in interfaces %}<option {% if i==capture_iface %}selected{% endif %}>{{ i }}</option>{% endfor %}</select>
+          <input id="ssl-tgt" placeholder="Target IP (optional)">
+        </div>
+        <div class="r">
+          <button class="btn btn-red sm" onclick="startSSL()">▶ Start</button>
+          <button class="btn btn-ghost sm" onclick="stopSSL()">■ Stop</button>
+        </div>
+        <div style="font-size:10px;color:var(--muted);margin-top:6px">
+          Requires ARP MITM active. Proxy runs on port 8080.
+        </div>
+      </div>
+
+      <div class="oc">
+        <h4>💥 Attack Simulator</h4>
+        <div class="r">
+          <input id="sim-tgt" placeholder="Target IP">
+          <select id="sim-type">
+            <option value="all">All attacks</option>
+            <option value="port_scan">Port Scan</option>
+            <option value="syn_flood">SYN Flood</option>
+            <option value="brute_force">Brute Force</option>
+            <option value="icmp_flood">ICMP Flood</option>
+            <option value="xmas_scan">XMAS Scan</option>
+            <option value="null_scan">NULL Scan</option>
+            <option value="arp_spoof">ARP Spoof</option>
+            <option value="dns_spoof">DNS Spoof</option>
+          </select>
+        </div>
+        <div class="r">
+          <select id="sim-iface">{% for i in interfaces %}<option {% if i==capture_iface %}selected{% endif %}>{{ i }}</option>{% endfor %}</select>
+          <button class="btn btn-orange sm" onclick="runSim()">▶ Run</button>
+        </div>
+        <pre class="out" id="sim-out">Simulation output…</pre>
+      </div>
+
+    </div>
+
+    <!-- ── Network Discovery (full width below the cards) ── -->
+    <div class="panel" style="margin-top:12px">
+      <div class="ph">
+        <h3>🔍 Network Discovery</h3>
+        <select id="disc-iface" style="font-size:11px;padding:3px 6px" onchange="onDiscIfaceChange()">
+          {% for i in interfaces %}<option {% if i==capture_iface %}selected{% endif %}>{{ i }}</option>{% endfor %}
+          <option value="__custom__">— Custom —</option>
+        </select>
+        <input id="disc-subnet" placeholder="Enter subnet, e.g. 10.10.32.0/24" style="font-size:11px;padding:3px 6px;width:200px;display:none" title="Required when Custom interface is selected">
+        <button class="btn btn-green sm" onclick="startDisc()">▶ Scan Network</button>
+        <button class="btn btn-ghost sm" onclick="stopDisc()">■ Stop</button>
+        <span id="disc-badge" style="font-size:10px;color:var(--muted)"></span>
+      </div>
+      <div id="disc-progress-wrap" style="display:none;padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+          <span id="disc-phase" style="font-size:10px;color:var(--accent);flex:1">Initialising…</span>
+          <span id="disc-pct-lbl" style="font-size:11px;font-weight:bold">0%</span>
+          <span id="disc-found-lbl" style="font-size:10px;color:var(--green)">0 found</span>
+        </div>
+        <div style="background:var(--border);border-radius:3px;height:5px;overflow:hidden">
+          <div id="disc-bar" style="height:100%;background:var(--green);width:0%;transition:width .4s;border-radius:3px"></div>
+        </div>
+        <div style="font-size:10px;color:var(--muted);margin-top:3px">
+          Current: <span id="disc-cur-ip" style="color:var(--text);font-family:monospace"></span>
+          &nbsp;·&nbsp; <span id="disc-scanned">0</span>/<span id="disc-total">0</span> hosts
+        </div>
+      </div>
+      <div class="pb" style="max-height:260px">
+        <table>
+          <thead><tr><th>IP</th><th>MAC</th><th>Hostname</th><th>Method</th><th></th></tr></thead>
+          <tbody id="dev-tbody">
+            <tr id="dev-ph"><td colspan="5" style="color:var(--muted);text-align:center;padding:20px">
+              Click ▶ Scan Network — scans full /24 subnet via ARP + ICMP ping
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── NETWORK TAB ── -->
+  <div class="pane" id="pane-network">
+    <div class="col2" style="flex:1">
+
+      <div class="panel">
+        <div class="ph"><h3>📈 Traffic Averages (1-hr rolling)</h3></div>
+        <div class="pb">
+          <table>
+            <thead><tr><th>IP</th><th>Avg PPS</th><th>Avg BPS</th><th>Samples</th></tr></thead>
+            <tbody id="avg-tbody">
+              {% for t in traffic_avgs %}
+              <tr>
+                <td><a class="ip" onclick="openIp('{{ t.ip }}')">{{ t.ip }}</a></td>
+                <td>{{ "%.2f"|format(t.avg_pps) }}</td>
+                <td>{{ "%.0f"|format(t.avg_bps) }}</td>
+                <td style="color:var(--muted)">{{ t.sample_count }}</td>
+              </tr>
+              {% else %}
+              <tr><td colspan="4" style="color:var(--muted);text-align:center;padding:20px">No traffic data yet</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="ph"><h3>🗺 ARP / IP–MAC Map</h3></div>
+        <div class="pb">
+          <table>
+            <thead><tr><th>IP</th><th>MAC</th><th>First Seen</th><th>Last Seen</th></tr></thead>
+            <tbody id="arp-tbody">
+              {% for m in ip_mac %}
+              <tr>
+                <td><a class="ip" onclick="openIp('{{ m.ip }}')">{{ m.ip }}</a></td>
+                <td style="color:var(--muted)">{{ m.mac }}</td>
+                <td style="color:var(--muted)" data-ts="{{ m.first_seen|int }}">{{ m.first_seen|int }}</td>
+                <td style="color:var(--muted)" data-ts="{{ m.last_seen|int }}">{{ m.last_seen|int }}</td>
+              </tr>
+              {% else %}
+              <tr><td colspan="4" style="color:var(--muted);text-align:center;padding:20px">No ARP data yet</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- ── LISTS TAB ── -->
+  <div class="pane" id="pane-lists">
+    <div class="col2" style="flex:1">
+
+      <div class="panel">
+        <div class="ph"><h3>✅ Whitelist — IPs that bypass all alert detection</h3></div>
+        <div class="irow">
+          <input id="wl-ip"   placeholder="IP address">
+          <input id="wl-note" placeholder="Note (optional)">
+          <button class="btn btn-green sm" onclick="addWL()">Add</button>
+        </div>
+        <div class="pb">
+          <table>
+            <thead><tr><th>IP</th><th>Note</th><th></th></tr></thead>
+            <tbody id="wl-tbody">
+              {% for w in whitelist %}
+              <tr id="wlr-{{ w.ip|replace('.','_') }}">
+                <td>{{ w.ip }}</td>
+                <td style="color:var(--muted)">{{ w.note }}</td>
+                <td><button class="btn btn-red sm" onclick="removeWL('{{ w.ip }}')">✕</button></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="ph"><h3>🚫 Blacklist — extreme alert flag</h3></div>
+        <div class="irow">
+          <input id="bl-ip"     placeholder="IP address">
+          <input id="bl-reason" placeholder="Reason">
+          <button class="btn btn-red sm" onclick="addBL()">Add</button>
+        </div>
+        <div class="pb">
+          <table>
+            <thead><tr><th>IP</th><th>Reason</th><th></th></tr></thead>
+            <tbody id="bl-tbody">
+              {% for b in blacklist %}
+              <tr id="blr-{{ b.ip|replace('.','_') }}">
+                <td style="color:var(--red)">{{ b.ip }}</td>
+                <td style="color:var(--muted)">{{ b.reason }}</td>
+                <td><button class="btn btn-ghost sm" onclick="removeBL('{{ b.ip }}')">✕</button></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- #content -->
+
+<!-- ══ IP DETAIL OVERLAY ═════════════════════════════════════════════════════ -->
+<div id="ip-overlay" onclick="if(event.target===this)closeIp()">
+  <div id="ip-box">
+    <div class="ph" style="background:var(--bg)">
+      <h3 style="font-size:12px">📍 IP Detail: <span id="ip-ttl" style="color:var(--accent)"></span></h3>
+      <button class="btn btn-green sm" onclick="wlFromIp()">+ Whitelist</button>
+      <button class="btn btn-red sm"   onclick="blFromIp()">+ Blacklist</button>
+      <button class="btn btn-ghost sm" onclick="closeIp()">✕</button>
+    </div>
+    <div style="flex:1;overflow-y:auto;min-height:0;max-height:60vh">
+      <table>
+        <thead><tr><th>Time</th><th>Proto</th><th>Dst IP</th><th>Dst Port</th><th>Flags</th><th>Len</th><th>Payload</th></tr></thead>
+        <tbody id="ip-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ══ STATE ════════════════════════════════════════════════════════════════
+let paused    = false;
+let httpOnly  = false;
+let activeIp  = null;
+let alertCnt  = 0;
+let pktCnt    = 0;
+let newAlerts = 0;
+const MAX     = 400;
+let discTimer = null;
+
+// ══ TABS ═════════════════════════════════════════════════════════════════
+const TABS = ['alerts','packets','offensive','network','lists'];
+
+let _pktSeeded = false;
+let _lastPktTs = 0;
+
+async function refreshPackets() {
+  const url = _lastPktTs
+    ? `/api/packets?limit=200&since=${_lastPktTs}`
+    : `/api/packets?limit=200`;
+  const recent = await get(url);
+  const tbody = document.getElementById('pkt-tbody');
+  const ph = document.getElementById('pkt-ph');
+  if (ph) ph.remove();
+  if (recent && recent.length) {
+    [...recent].reverse().forEach(p => {
+      if (p.timestamp > _lastPktTs) _lastPktTs = p.timestamp;
+      onPacket({...p, type:'packet'});
+    });
+  } else if (!_pktSeeded) {
+    tbody.innerHTML = '<tr><td colspan="9" style="color:var(--muted);text-align:center;padding:16px">No packets yet — start the sniffer</td></tr>';
+  }
+  _pktSeeded = true;
+}
+
+function switchTab(id) {
+  TABS.forEach(t => {
+    document.getElementById('pane-'+t).classList.toggle('active', t===id);
+    document.querySelectorAll('.tab').forEach((el,i) => {
+      el.classList.toggle('active', TABS[i]===id);
+    });
+  });
+  if (id === 'alerts')  { newAlerts = 0; updateAlertBadge(); }
+  if (id === 'network')   { refreshAvgs(); refreshArp(); }
+  if (id === 'packets') { refreshPackets(); }
+}
+
+setInterval(() => {
+  if (document.getElementById('pane-packets').classList.contains('active')) {
+    refreshPackets();
+  }
+}, 3000);
+
+function updateAlertBadge() {
+  const el = document.getElementById('al-cnt');
+  el.textContent = newAlerts;
+  el.classList.toggle('show', newAlerts > 0);
+}
+
+// ══ WEBSOCKET ════════════════════════════════════════════════════════════
+let ws, wsR = 0;
+
+function wsConnect() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}/ws`);
+
+  ws.onopen  = async () => {
+    wsR = 0;
+    const recent = await get('/api/alerts?limit=100');
+    const tbody = document.getElementById('alert-tbody');
+    const ph = document.getElementById('alert-ph');
+    if (ph) ph.remove();
+    if (recent && recent.length) {
+      [...recent].reverse().forEach(a => onAlert(a));
+    } else {
+      tbody.innerHTML = '<tr><td colspan="8" style="color:var(--muted);text-align:center;padding:30px">No alerts yet</td></tr>';
+    }
+  };
+  ws.onclose = () => {
+    setLed(false, 'DISCONNECTED');
+    wsR = Math.min(wsR+1, 8);
+    setTimeout(wsConnect, wsR * 1500);
+  };
+  ws.onerror = (e) => { console.warn('[WS] error', e); };
+  ws.onmessage = e => {
+    let m; try { m = JSON.parse(e.data); } catch { return; }
+    if      (m.type === 'packet') onPacket(m);
+    else if (m.type === 'alert')  onAlert(m);
+    else if (m.type === 'status') onStatus(m);
+  };
+}
+
+setInterval(() => ws && ws.readyState === 1 && ws.send('ping'), 20000);
+wsConnect();
+
+// ══ STATUS ═══════════════════════════════════════════════════════════════
+function onStatus(s) {
+  setLed(s.sniffer_running, s.sniffer_running ? 'SNIFFER ON' : 'SNIFFER OFF');
+  document.getElementById('c-cap').textContent  = s.packets_captured  ?? 0;
+  document.getElementById('c-proc').textContent = s.packets_processed ?? 0;
+  document.getElementById('c-q').textContent    = s.queue_size        ?? 0;
+}
+
+function setLed(on, label) {
+  document.getElementById('led').className = on ? 'on' : '';
+  const t = document.getElementById('status-txt');
+  t.textContent = label;
+  t.style.color = on ? 'var(--green)' : 'var(--muted)';
+}
+
+// ══ PACKET HANDLER ═══════════════════════════════════════════════════════
+function onPacket(p) {
+  if (paused) return;
+  if (httpOnly) {
+    const hp = [80,443,8080,8443];
+    if (!hp.includes(p.dst_port) && !hp.includes(p.src_port)) return;
+  }
+
+  pktCnt++;
+  document.getElementById('s-pk').textContent = pktCnt;
+
+  const tbody = document.getElementById('pkt-tbody');
+  removePH(tbody);
+  const ts    = new Date(p.timestamp*1000).toLocaleTimeString();
+  const proto = (p.protocol||'other').toLowerCase();
+  const pay   = (p.payload||'').substring(0,50).replace(/</g,'&lt;');
+  tbody.prepend(mkTr([
+    `<span style="color:var(--muted);white-space:nowrap">${ts}</span>`,
+    `<span class="badge p-${proto}">${p.protocol||'OTHER'}</span>`,
+    `<a class="ip" onclick="openIp('${p.src_ip||''}')">${p.src_ip||''}</a>`,
+    `<span style="color:var(--muted)">${p.src_port||''}</span>`,
+    `<span style="color:var(--muted)">${p.dst_ip||''}</span>`,
+    `<span style="color:var(--muted)">${p.dst_port||''}</span>`,
+    `<span style="color:var(--yellow)">${p.flags||''}</span>`,
+    `${p.length||0}`,
+    `<span style="color:var(--muted)">${pay}</span>`,
+  ]));
+  trim(tbody);
+
+  // If IP detail open and matches
+  if (activeIp && (p.src_ip===activeIp || p.dst_ip===activeIp)) appendIpRow(p);
+}
+
+// ══ ALERT HANDLER ════════════════════════════════════════════════════════
+function onAlert(a) {
+  if ((a.timestamp || 0) <= _alertClearedAt) return;  // suppress alerts from before last clear
+  alertCnt++;
+  document.getElementById('s-al').textContent = alertCnt;
+
+  // Badge on tab if not currently viewing alerts
+  const alertsActive = document.getElementById('pane-alerts').classList.contains('active');
+  if (!alertsActive) { newAlerts++; updateAlertBadge(); }
+
+  const tbody = document.getElementById('alert-tbody');
+  removePH(tbody);
+  const ts = new Date(a.timestamp*1000).toLocaleTimeString();
+  tbody.prepend(mkTr([
+    `<span style="color:var(--muted);white-space:nowrap">${ts}</span>`,
+    `<b>${a.alert_type||''}</b>`,
+    `<span class="badge s-${a.severity||'low'}">${a.severity||''}</span>`,
+    `<a class="ip" onclick="openIp('${a.src_ip||''}')">${a.src_ip||''}</a>`,
+    `<span style="color:var(--muted)">${a.dst_ip||''}</span>`,
+    `<span style="color:var(--muted)">${a.dst_port||''}</span>`,
+    `<span style="color:var(--muted)">${a.protocol||''}</span>`,
+    `<span style="color:var(--muted)">${(a.detail||'').substring(0,80)}</span>`,
+  ]));
+  trim(tbody);
+}
+
+// ══ CLEAR ════════════════════════════════════════════════════════════════
+let _alertClearedAt = 0;
+
+function clearAlerts() {
+  _alertClearedAt = Date.now() / 1000;
+  fetch('/api/alerts', {method:'DELETE'});  // delete from DB so refresh stays clean
+  document.getElementById('alert-tbody').innerHTML =
+    '<tr><td colspan="8" style="color:var(--muted);text-align:center;padding:24px">Cleared</td></tr>';
+  alertCnt = 0; document.getElementById('s-al').textContent = 0;
+  newAlerts = 0; updateAlertBadge();
+}
+
+function clearPackets() {
+  document.getElementById('pkt-tbody').innerHTML = '';
+  pktCnt = 0; document.getElementById('s-pk').textContent = 0;
+}
+
+function togglePause() {
+  paused = !paused;
+  document.getElementById('pause-btn').textContent = paused ? '▶ Resume' : '⏸ Pause';
+}
+
+// ══ IP DETAIL OVERLAY ════════════════════════════════════════════════════
+async function openIp(ip) {
+  if (!ip || ip==='None') return;
+  activeIp = ip;
+  document.getElementById('ip-ttl').textContent = ip;
+  document.getElementById('ip-overlay').classList.add('open');
+  const tbody = document.getElementById('ip-tbody');
+  tbody.innerHTML = '<tr><td colspan="7" style="color:var(--muted);text-align:center;padding:16px">Loading…</td></tr>';
+
+  const data = await get(`/api/packets?limit=150&src_ip=${ip}`);
+  tbody.innerHTML = '';
+  if (!data || !data.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="color:var(--muted);text-align:center;padding:16px">No packets from this IP yet</td></tr>';
+  } else {
+    data.forEach(appendIpRow);
+  }
+}
+
+function appendIpRow(p) {
+  const tbody = document.getElementById('ip-tbody');
+  removePH(tbody);
+  const ts    = new Date(p.timestamp*1000).toLocaleTimeString();
+  const proto = (p.protocol||'other').toLowerCase();
+  tbody.prepend(mkTr([
+    `<span style="color:var(--muted)">${ts}</span>`,
+    `<span class="badge p-${proto}">${p.protocol||''}</span>`,
+    `<span style="color:var(--muted)">${p.dst_ip||''}</span>`,
+    `<span style="color:var(--muted)">${p.dst_port||''}</span>`,
+    `<span style="color:var(--yellow)">${p.flags||''}</span>`,
+    `${p.length||0}`,
+    `<span style="color:var(--muted)">${(p.payload||'').substring(0,50)}</span>`,
+  ]));
+  trim(tbody, 150);
+}
+
+function closeIp() {
+  activeIp = null;
+  document.getElementById('ip-overlay').classList.remove('open');
+}
+
+function wlFromIp() {
+  if (!activeIp) return;
+  const note = prompt('Whitelist note (optional):', '') || '';
+  post('/lists/whitelist/add', {ip:activeIp,note}).then(() => {
+    addWLRow(activeIp, note); incr('s-wl'); toast('Whitelisted ' + activeIp);
+  });
+}
+
+function blFromIp() {
+  if (!activeIp) return;
+  const reason = prompt('Blacklist reason:', '') || '';
+  post('/lists/blacklist/add', {ip:activeIp,reason}).then(() => {
+    addBLRow(activeIp, reason); incr('s-bl'); toast('Blacklisted ' + activeIp);
+  });
+}
+
+// ══ WHITELIST / BLACKLIST ═════════════════════════════════════════════════
+async function addWL() {
+  const ip = v('wl-ip'), note = v('wl-note');
+  if (!ip) return;
+  await post('/lists/whitelist/add', {ip,note});
+  clear('wl-ip'); clear('wl-note');
+  addWLRow(ip, note); incr('s-wl'); toast('Whitelisted: '+ip);
+}
+function addWLRow(ip, note) {
+  const id='wlr-'+ip.replace(/\./g,'_');
+  if (document.getElementById(id)) return;
+  const tr=document.createElement('tr'); tr.id=id;
+  tr.innerHTML=`<td>${ip}</td><td style="color:var(--muted)">${note}</td>
+    <td><button class="btn btn-red sm" onclick="removeWL('${ip}')">✕</button></td>`;
+  document.getElementById('wl-tbody').appendChild(tr);
+}
+async function removeWL(ip) {
+  await post('/lists/whitelist/remove',{ip});
+  const el=document.getElementById('wlr-'+ip.replace(/\./g,'_'));
+  if(el)el.remove(); toast('Removed from whitelist: '+ip);
+}
+
+async function addBL() {
+  const ip=v('bl-ip'), reason=v('bl-reason');
+  if(!ip) return;
+  await post('/lists/blacklist/add',{ip,reason});
+  clear('bl-ip'); clear('bl-reason');
+  addBLRow(ip,reason); incr('s-bl'); toast('Blacklisted: '+ip);
+}
+function addBLRow(ip,reason) {
+  const id='blr-'+ip.replace(/\./g,'_');
+  if(document.getElementById(id)) return;
+  const tr=document.createElement('tr'); tr.id=id;
+  tr.innerHTML=`<td style="color:var(--red)">${ip}</td><td style="color:var(--muted)">${reason}</td>
+    <td><button class="btn btn-ghost sm" onclick="removeBL('${ip}')">✕</button></td>`;
+  document.getElementById('bl-tbody').appendChild(tr);
+}
+async function removeBL(ip) {
+  await post('/lists/blacklist/remove',{ip});
+  const el=document.getElementById('blr-'+ip.replace(/\./g,'_'));
+  if(el)el.remove(); toast('Removed from blacklist: '+ip);
+}
+
+// ══ DISCOVERY ════════════════════════════════════════════════════════════
+function onDiscIfaceChange() {
+  const isCustom = document.getElementById('disc-iface').value === '__custom__';
+  const subnetEl = document.getElementById('disc-subnet');
+  subnetEl.style.display = isCustom ? 'inline-block' : 'none';
+  subnetEl.style.borderColor = isCustom ? 'var(--orange)' : '';
+  if (!isCustom) subnetEl.value = '';   // clear stale value when switching away
+  if (isCustom) subnetEl.focus();
+}
+
+async function startDisc() {
+  const ifaceEl  = document.getElementById('disc-iface');
+  const subnetEl = document.getElementById('disc-subnet');
+  const isCustom = ifaceEl.value === '__custom__';
+  const subnet   = subnetEl.value.trim();
+
+  if (isCustom && !subnet) {
+    subnetEl.style.borderColor = 'var(--red)';
+    subnetEl.focus();
+    toast('Enter a subnet to scan (e.g. 10.10.32.0/24)');
+    return;
+  }
+
+  // Real interface → auto-derive subnet in backend; never send leftover subnet value.
+  // Custom → use capture_iface for packet ops, send the user-typed subnet.
+  const iface = isCustom ? '{{ capture_iface }}' : ifaceEl.value;
+  const body  = {interface: iface};
+  if (isCustom && subnet) body.subnet = subnet;
+
+  // Clear previous scan results before starting fresh
+  document.getElementById('dev-tbody').innerHTML =
+    '<tr id="dev-ph"><td colspan="5" style="color:var(--muted);text-align:center;padding:20px">Scanning…</td></tr>';
+  document.getElementById('disc-badge').textContent = '● Scanning';
+  document.getElementById('disc-bar').style.width   = '0%';
+  document.getElementById('disc-progress-wrap').style.display = 'block';
+
+  if (discTimer) { clearInterval(discTimer); discTimer = null; }
+
+  const resp = await post('/offensive/discovery/start', body);
+  if (resp && resp.error) {
+    toast('Error: ' + resp.error);
+    document.getElementById('disc-progress-wrap').style.display = 'none';
+    document.getElementById('disc-badge').textContent = '✗ ' + resp.error;
+    return;
+  }
+
+  toast('Scanning ' + (isCustom ? subnet : iface) + ' — ARP + ICMP ping');
+  discTimer = setInterval(pollDiscovery, 800);
+}
+
+async function stopDisc() {
+  await post('/offensive/discovery/stop');
+  if (discTimer) { clearInterval(discTimer); discTimer = null; }
+  document.getElementById('disc-progress-wrap').style.display = 'none';
+  document.getElementById('disc-badge').textContent = 'Stopped';
+  toast('Discovery stopped');
+}
+
+async function pollDiscovery() {
+  const s = await get('/api/discovery/status');
+  if (!s) return;
+
+  // Update progress bar
+  document.getElementById('disc-phase').textContent   = s.method || '';
+  document.getElementById('disc-pct-lbl').textContent = (s.pct || 0) + '%';
+  document.getElementById('disc-found-lbl').textContent = s.found + ' found';
+  document.getElementById('disc-bar').style.width     = (s.pct || 0) + '%';
+  document.getElementById('disc-cur-ip').textContent  = s.current_ip || '';
+  document.getElementById('disc-scanned').textContent = s.scanned || 0;
+  document.getElementById('disc-total').textContent   = s.total || 0;
+
+  // Update device table live as devices are found
+  if (s.devices && s.devices.length > 0) {
+    document.getElementById('s-dv').textContent = s.devices.length;
+    const ph = document.getElementById('dev-ph');
+    if (ph) ph.remove();
+    const tbody = document.getElementById('dev-tbody');
+    s.devices.forEach(d => {
+      const existId = 'dev-' + d.ip.replace(/\./g,'_');
+      if (!document.getElementById(existId)) {
+        const tr = document.createElement('tr');
+        tr.id = existId;
+        tr.className = 'new';
+        tr.innerHTML = `
+          <td><a class="ip" onclick="openIp('${d.ip}')">${d.ip}</a></td>
+          <td style="color:var(--muted)">${d.mac||''}</td>
+          <td style="color:var(--muted)">${d.hostname||''}</td>
+          <td><span style="color:${d.method==='ARP'?'var(--cyan, #22d3ee)':'var(--yellow)'};font-size:10px">${d.method||''}</span></td>
+          <td><button class="btn btn-blue sm" onclick="setReconIp('${d.ip}')">Recon</button></td>`;
+        tbody.appendChild(tr);
+      }
+    });
+  }
+
+  // Stop polling only after the scan has actually started and then finished
+  if (!s.running && s.started_at) {
+    clearInterval(discTimer); discTimer = null;
+    document.getElementById('disc-progress-wrap').style.display = 'none';
+    if (s.error) {
+      document.getElementById('disc-badge').textContent = '✗ Error: ' + s.error;
+    } else {
+      document.getElementById('disc-badge').textContent = '✓ Done — ' + (s.found || 0) + ' devices';
+    }
+  }
+}
+
+async function refreshDevices() {
+  const data = await get('/api/devices');
+  if (!data || !data.length) return;
+  document.getElementById('s-dv').textContent = data.length;
+  const tbody = document.getElementById('dev-tbody');
+  const ph = document.getElementById('dev-ph');
+  if (ph) ph.remove();
+  data.forEach(d => {
+    const existId = 'dev-' + d.ip.replace(/\./g,'_');
+    if (!document.getElementById(existId)) {
+      const tr = document.createElement('tr');
+      tr.id = existId;
+      tr.innerHTML = `
+        <td><a class="ip" onclick="openIp('${d.ip}')">${d.ip}</a></td>
+        <td style="color:var(--muted)">${d.mac||''}</td>
+        <td style="color:var(--muted)">${d.hostname||''}</td>
+        <td style="color:var(--muted)">—</td>
+        <td><button class="btn btn-blue sm" onclick="setReconIp('${d.ip}')">Recon</button></td>`;
+      tbody.appendChild(tr);
+    }
+  });
+}
+
+function setReconIp(ip) {
+  document.getElementById('recon-ip').value=ip;
+  switchTab('offensive');
+  toast('Set recon target: '+ip);
+}
+
+// ══ OFFENSIVE ════════════════════════════════════════════════════════════
+async function runRecon() {
+  const ip=document.getElementById('recon-ip').value.trim();
+  if(!ip){toast('Enter a target IP');return;}
+  document.getElementById('recon-out').textContent='Scanning '+ip+' — please wait (~60s)…';
+  const r=await post('/offensive/recon',{target_ip:ip});
+  document.getElementById('recon-out').textContent=JSON.stringify(r,null,2);
+}
+
+async function startARP() {
+  const b={target_ip:document.getElementById('arp-tgt').value.trim(),
+            gateway_ip:document.getElementById('arp-gw').value.trim(),
+            interface:document.getElementById('arp-iface').value,
+            mode:document.getElementById('arp-mode').value};
+  if(!b.target_ip||!b.gateway_ip){toast('Fill target and gateway IP');return;}
+  await post('/offensive/arp/start',b);
+  toast('ARP engine started — '+b.mode);
+}
+async function stopARP(){await post('/offensive/arp/stop');toast('ARP engine stopped');}
+
+async function startDNS() {
+  const b={target_ip:document.getElementById('dns-tgt').value.trim()||null,
+            domain:document.getElementById('dns-dom').value.trim(),
+            spoof_ip:document.getElementById('dns-ip').value.trim(),
+            interface:document.getElementById('dns-iface').value};
+  if(!b.domain||!b.spoof_ip){toast('Fill domain and redirect IP');return;}
+  await post('/offensive/dns_spoof/start',b);
+  toast('DNS spoofing started');
+}
+async function stopDNS(){await post('/offensive/dns_spoof/stop');toast('DNS spoofing stopped');}
+
+async function startSSL(){
+  await post('/offensive/ssl_strip/start',{
+    interface:document.getElementById('ssl-iface').value,
+    target_ip:document.getElementById('ssl-tgt').value.trim()||null});
+  toast('SSL stripping started on port 8080');
+}
+async function stopSSL(){await post('/offensive/ssl_strip/stop');toast('SSL strip stopped');}
+
+async function runSim(){
+  const b={target_ip:document.getElementById('sim-tgt').value.trim(),
+            attack_type:document.getElementById('sim-type').value,
+            interface:document.getElementById('sim-iface').value};
+  if(!b.target_ip){toast('Enter target IP');return;}
+  document.getElementById('sim-out').textContent='Running…';
+  const r=await post('/offensive/attack_sim',b);
+  document.getElementById('sim-out').textContent=JSON.stringify(r,null,2);
+}
+
+// ══ PERIODIC REFRESH (non-WS data) ═══════════════════════════════════════
+async function refreshAvgs(){
+  const d=await get('/api/traffic_avgs');
+  if(!d||!d.length) return;
+  document.getElementById('avg-tbody').innerHTML=d.map(t=>`<tr>
+    <td><a class="ip" onclick="openIp('${t.ip}')">${t.ip}</a></td>
+    <td>${t.avg_pps.toFixed(2)}</td><td>${Math.round(t.avg_bps)}</td>
+    <td style="color:var(--muted)">${t.sample_count}</td></tr>`).join('');
+}
+async function refreshArp(){
+  const d=await get('/api/ip_mac');
+  if(!d||!d.length) return;
+  document.getElementById('arp-tbody').innerHTML=d.map(m=>`<tr>
+    <td><a class="ip" onclick="openIp('${m.ip}')">${m.ip}</a></td>
+    <td style="color:var(--muted)">${m.mac}</td>
+    <td style="color:var(--muted)">${new Date(m.first_seen*1000).toLocaleTimeString()}</td>
+    <td style="color:var(--muted)">${new Date(m.last_seen*1000).toLocaleTimeString()}</td></tr>`).join('');
+}
+setInterval(() => {
+  if (document.getElementById('pane-network').classList.contains('active')) {
+    refreshAvgs(); refreshArp();
+  }
+}, 15000);
+
+// ══ HELPERS ══════════════════════════════════════════════════════════════
+function mkTr(cells) {
+  const tr=document.createElement('tr'); tr.className='new';
+  tr.innerHTML=cells.map(c=>`<td>${c}</td>`).join(''); return tr;
+}
+function removePH(tbody){
+  const ph=tbody.querySelector('td[colspan]');
+  if(ph)ph.closest('tr').remove();
+}
+function trim(tbody,max=MAX){
+  while(tbody.children.length>max)tbody.lastChild.remove();
+}
+function incr(id){
+  const el=document.getElementById(id);
+  el.textContent=parseInt(el.textContent||0)+1;
+}
+function v(id){return document.getElementById(id).value.trim();}
+function clear(id){document.getElementById(id).value='';}
+async function get(url){
+  try{return await(await fetch(url)).json();}catch{return[];}
+}
+async function post(url,body){
+  try{return await(await fetch(url,{method:'POST',
+    headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})})).json();}
+  catch{return{};}
+}
+function toast(msg,ms=2800){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.style.display='block';
+  clearTimeout(el._t);el._t=setTimeout(()=>el.style.display='none',ms);
+}
+
+// Format server-rendered Unix timestamps
+document.querySelectorAll('[data-ts]').forEach(el => {
+  const ts = parseInt(el.dataset.ts);
+  if (ts > 0) el.textContent = new Date(ts * 1000).toLocaleTimeString();
+});
+
+// Style ip links
+document.head.insertAdjacentHTML('beforeend',
+  `<style>a.ip{color:var(--accent);text-decoration:none;cursor:pointer}
+   a.ip:hover{text-decoration:underline}</style>`);
+</script>
+</body>
+</html>
