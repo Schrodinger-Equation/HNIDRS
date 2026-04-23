@@ -648,7 +648,10 @@ function onAlert(a) {
     `<span style="color:var(--muted)">${a.dst_ip||''}</span>`,
     `<span style="color:var(--muted)">${a.dst_port||''}</span>`,
     `<span style="color:var(--muted)">${a.protocol||''}</span>`,
-    `<span style="color:var(--muted)">${(a.detail||'').substring(0,80)}</span>`,
+    `<span style="color:var(--muted); display: block;">
+    ${(a.detail || '').substring(0, 70)}<br>
+    ${(a.detail || '').substring(70, 140)}
+</span>`,
   ]));
   trim(tbody);
 }
