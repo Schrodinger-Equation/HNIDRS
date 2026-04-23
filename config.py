@@ -48,9 +48,9 @@ SMTP_PASS           = "yourpassword"
 SMTP_TO             = "alert@email.com"
 
 # Telegram
-TELEGRAM_ENABLED    = False
-TELEGRAM_BOT_TOKEN  = "your-bot-token"
-TELEGRAM_CHAT_ID    = "your-chat-id"
+TELEGRAM_ENABLED    = True
+TELEGRAM_BOT_TOKEN  = "8207924369:AAHfE1CodNbjIB97DtC5tif5sq5MpaBoHZU"
+TELEGRAM_CHAT_ID    = "816931616"
 
 # ── Flask ─────────────────────────────────────────────────────────────────────
 FLASK_HOST          = "0.0.0.0"
