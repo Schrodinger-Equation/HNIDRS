@@ -54,6 +54,6 @@ TELEGRAM_CHAT_ID    = "816931616"
 
 # ── Flask ─────────────────────────────────────────────────────────────────────
 FLASK_HOST          = "0.0.0.0"
-FLASK_PORT          = 5000
+FLASK_PORT          = 5050
 FLASK_DEBUG         = False
 SECRET_KEY          = "change-me-in-production"
