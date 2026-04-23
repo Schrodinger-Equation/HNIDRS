@@ -1,5 +1,17 @@
-scapy>=2.5.0
+# ── Web framework & server ────────────────────────────────────────────────────
 fastapi>=0.110.0
-uvicorn[standard]>=0.29.0
-jinja2>=3.1.0
-python-multipart>=0.0.9
+uvicorn[standard]>=0.29.0      # includes websockets support
+jinja2>=3.1.0                  # HTML templating
+python-multipart>=0.0.9        # form data parsing
+
+# ── Packet capture & crafting ─────────────────────────────────────────────────
+scapy>=2.5.0                   # core engine — sniffing, ARP, crafting
+# scapy[basic] pulls in: libpcap bindings, netifaces, cryptography
+
+# ── Configuration ─────────────────────────────────────────────────────────────
+python-dotenv>=1.0.0           # loads .env file into os.environ
+
+# ── System tools (install via apt, NOT pip) ───────────────────────────────────
+# sudo apt install nmap         ← used via subprocess in offensive/recon.py
+# sudo apt install python3-dev  ← needed for scapy C extensions
+# sudo apt install libpcap-dev  ← needed for raw packet capture
